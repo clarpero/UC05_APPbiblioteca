@@ -1,13 +1,18 @@
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QGridLayout,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
-    QMainWindow, 
+    QMainWindow,
+    QMessageBox,
     QPushButton,
-    QVBoxLayout, 
-    QWidget
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
     )
 
 class Janela_Livros(QMainWindow):
@@ -19,8 +24,12 @@ class Janela_Livros(QMainWindow):
         central = QWidget()
         self.layout_principal = QVBoxLayout(central)
         self.setCentralWidget(central)
+
         self.layout_principal.addLayout(self.montar_formulario())
         self.layout_principal.addLayout(self.montar_acoes())
+        self.layout_principal.addLayout(self.montar_pesquisa())
+        self.layout_principal.addWidget(self.montar_tabela())
+        self.statusBar().showMessage('Pronto. Cadastre o primeiro livro.')
 
     def montar_formulario(self):
         self.campo_titulo = QLineEdit()
@@ -62,3 +71,31 @@ class Janela_Livros(QMainWindow):
         linha.addStretch()
         linha.addWidget(self.botao_limpar)
         return linha
+
+    def montar_pesquisa(self):
+        self.campo_pesquisa = QLineEdit()
+        self.campo_pesquisa.setPlaceholderText("Digite parte do título ou do autor")
+        self.botao_pesquisar = QPushButton("Pesquisar")
+        self.botao_mostrar_todos = QPushButton("Mostrar todos")
+
+        linha = QHBoxLayout()
+        linha.addWidget(QLabel("Pesquisar"))
+        linha.addWidget(self.campo_pesquisa, 1)
+        linha.addWidget(self.botao_pesquisar)
+        linha.addWidget(self.botao_mostrar_todos)
+        return linha
+    
+    def montar_tabela(self):
+        self.tabela = QTableWidget(0, 5)
+        self.tabela.setHorizontalHeaderLabels(["ID", "Título", "Autor", "Ano", "ISBN"])
+        self.tabela.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.tabela.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tabela.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.tabela.verticalHeader().setVisible(False)
+        self.tabela.setAlternatingRowColors(True)
+
+        cabecalho = self.tabela.horizontalHeader()
+        cabecalho.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        cabecalho.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        cabecalho.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        return self.tabela
