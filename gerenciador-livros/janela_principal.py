@@ -1,3 +1,4 @@
+import banco
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -20,6 +21,7 @@ class Janela_Livros(QMainWindow):
         super().__init__()
         self.setWindowTitle("Gerenciador de Livros")
         self.resize (900,520)
+        self.conn = banco.conectar()
 
         central = QWidget()
         self.layout_principal = QVBoxLayout(central)
@@ -99,3 +101,18 @@ class Janela_Livros(QMainWindow):
         cabecalho.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         cabecalho.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         return self.tabela
+
+    def closeEvent(self, evento):
+                self.conn.close()
+                super().closeEvent(evento)
+
+    def mostrar_na_tabela(self, livros):
+        self.tabela.setRowCount(len(livros))
+        for linha, livro in enumerate(livros):
+            valores = [livro["id"], livro["titulo"], livro["autor"], livro["ano"], livro["isbn"]]
+            for coluna, valor in enumerate(valores):
+                texto = "" if valor is None else str(valor)
+                self.tabela.setItem(linha, coluna, QTableWidgetItem(texto))
+        self.tabela.clearSelection()
+
+    
