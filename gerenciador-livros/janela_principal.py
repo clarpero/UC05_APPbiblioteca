@@ -40,7 +40,6 @@ class Janela_Livros(QMainWindow):
 
         self.conectar_eventos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
-        self.botao_excluir.clicked.connect(self.excluir)
 
     def montar_menu(self):
         menu = self.menuBar().addMenu("&Tema")
@@ -83,8 +82,7 @@ class Janela_Livros(QMainWindow):
         self.botao_excluir = QPushButton("Excluir")
         self.botao_limpar = QPushButton("Limpar")
 
-        # Atualizar será implementado numa etapa posterior.
-        # Excluir começa desligado: só funciona com um livro selecionado.
+        # Atualizar e Excluir começam desligados: só funcionam com um livro selecionado.
         self.botao_atualizar.setEnabled(False)
         self.botao_excluir.setEnabled(False)
 
@@ -179,6 +177,8 @@ class Janela_Livros(QMainWindow):
         self.campo_pesquisa.returnPressed.connect(self.pesquisar)
         self.botao_mostrar_todos.clicked.connect(self.mostrar_todos)
         self.tabela.itemSelectionChanged.connect(self.selecionar_livro)
+        self.botao_excluir.clicked.connect(self.excluir)
+        self.botao_atualizar.clicked.connect(self.atualizar)
 
     def pesquisar(self):
         termo = self.campo_pesquisa.text().strip()
@@ -201,6 +201,7 @@ class Janela_Livros(QMainWindow):
         if not linhas:
             self.livro_selecionado = None
             self.botao_cadastrar.setEnabled(True)
+            self.botao_atualizar.setEnabled(False)
             self.botao_excluir.setEnabled(False)
             self.limpar_campos()
             return
@@ -213,9 +214,11 @@ class Janela_Livros(QMainWindow):
         self.campo_ano.setText("" if livro["ano"] is None else str(livro["ano"]))
         self.campo_isbn.setText(livro["isbn"] or "")
         self.botao_cadastrar.setEnabled(False)
+        self.botao_atualizar.setEnabled(True)
         self.botao_excluir.setEnabled(True)
         self.statusBar().showMessage(
-            f'Livro "{livro["titulo"]}" selecionado. Clique em Limpar para cadastrar outro.', 8000
+            f'Livro "{livro["titulo"]}" selecionado. Altere os campos e clique em Atualizar, '
+            "ou clique em Limpar para cadastrar outro.", 8000
         )
 
     def montar_coluna_cadastro(self):
@@ -258,3 +261,44 @@ class Janela_Livros(QMainWindow):
         self.campo_pesquisa.clear()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
         self.statusBar().showMessage(f'Livro "{livro["titulo"]}" excluído.', 5000)
+
+    def atualizar(self):
+        livro = self.livro_selecionado
+        if livro is None:
+            self.statusBar().showMessage("Selecione um livro na tabela para atualizar.", 5000)
+            return
+
+        try:
+            novo = validar_livro(
+                self.campo_titulo.text(),
+                self.campo_autor.text(),
+                self.campo_ano.text(),
+                self.campo_isbn.text(),
+            )
+        except ErroValidacao as erro:
+            self.avisar(str(erro), erro.campo)
+            return
+
+        antes = (livro["titulo"], livro["autor"], livro["ano"], livro["isbn"])
+        depois = (novo["titulo"], novo["autor"], novo["ano"], novo["isbn"])
+        if antes == depois:
+            self.statusBar().showMessage("Nada mudou. Altere algum campo antes de atualizar.", 5000)
+            return
+
+        resposta = QMessageBox.question(
+            self,
+            "Atualizar livro",
+            f'Salvar as alterações no livro ID {livro["id"]}?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if resposta != QMessageBox.StandardButton.Yes:
+            self.statusBar().showMessage("Atualização cancelada.", 3000)
+            return
+
+        banco.atualizar_livro(
+            self.conn, livro["id"], novo["titulo"], novo["autor"], novo["ano"], novo["isbn"]
+        )
+        self.limpar_campos()
+        self.campo_pesquisa.clear()
+        self.mostrar_na_tabela(banco.listar_livros(self.conn))
+        self.statusBar().showMessage(f'Livro ID {livro["id"]} atualizado.', 5000)

@@ -51,3 +51,10 @@ def obter_livro(conn, livro_id):
 def excluir_livro(conn, livro_id):
     with conn:
         conn.execute("DELETE FROM livro WHERE id = ?", (livro_id,))
+
+def atualizar_livro(conn, livro_id, titulo, autor, ano, isbn):
+    with conn:
+        conn.execute(
+            "UPDATE livro SET titulo = ?, autor = ?, ano = ?, isbn = ? WHERE id = ?",
+            (titulo, autor, ano, isbn, livro_id),
+        )
