@@ -157,3 +157,41 @@ class Janela_Livros(QMainWindow):
     def conectar_eventos(self):
         self.botao_cadastrar.clicked.connect(self.cadastrar)
         self.botao_limpar.clicked.connect(self.limpar_campos)
+        self.botao_pesquisar.clicked.connect(self.pesquisar)
+        self.campo_pesquisa.returnPressed.connect(self.pesquisar)
+        self.botao_mostrar_todos.clicked.connect(self.mostrar_todos)
+        self.tabela.itemSelectionChanged.connect(self.selecionar_livro)
+
+    def pesquisar(self):
+        termo = self.campo_pesquisa.text().strip()
+        if not termo:
+            self.statusBar().showMessage("Digite parte do título ou do autor para pesquisar.", 5000)
+            self.campo_pesquisa.setFocus()
+            return
+        encontrados = banco.pesquisar_livros(self.conn, termo)
+        self.mostrar_na_tabela(encontrados)
+        self.statusBar().showMessage(f'{len(encontrados)} livro(s) encontrado(s) para "{termo}".', 5000)
+
+    def mostrar_todos(self):
+        self.campo_pesquisa.clear()
+        livros = banco.listar_livros(self.conn)
+        self.mostrar_na_tabela(livros)
+        self.statusBar().showMessage(f"{len(livros)} livro(s) cadastrado(s).", 5000)
+
+    def selecionar_livro(self):
+        linhas = self.tabela.selectionModel().selectedRows()
+        if not linhas:
+            self.botao_cadastrar.setEnabled(True)
+            self.limpar_campos()
+            return
+
+        livro_id = int(self.tabela.item(linhas[0].row(), 0).text())
+        livro = banco.obter_livro(self.conn, livro_id)
+        self.campo_titulo.setText(livro["titulo"])
+        self.campo_autor.setText(livro["autor"])
+        self.campo_ano.setText("" if livro["ano"] is None else str(livro["ano"]))
+        self.campo_isbn.setText(livro["isbn"] or "")
+        self.botao_cadastrar.setEnabled(False)
+        self.statusBar().showMessage(
+            f'Livro "{livro["titulo"]}" selecionado. Clique em Limpar para cadastrar outro.', 8000
+        )
