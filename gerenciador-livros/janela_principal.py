@@ -1,4 +1,5 @@
 import banco
+import tema
 from validacao import ErroValidacao, validar_livro
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
@@ -27,15 +28,35 @@ class Janela_Livros(QMainWindow):
         central = QWidget()
         self.layout_principal = QVBoxLayout(central)
         self.setCentralWidget(central)
+        self.montar_menu()
 
         self.layout_principal.addLayout(self.montar_formulario())
         self.layout_principal.addLayout(self.montar_acoes())
+        self.botao_cadastrar.setProperty("variante", "primario")
         self.layout_principal.addLayout(self.montar_pesquisa())
         self.layout_principal.addWidget(self.montar_tabela())
         self.statusBar().showMessage('Pronto. Cadastre o primeiro livro.')
 
         self.conectar_eventos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
+
+    def montar_menu(self):
+        menu = self.menuBar().addMenu("&Tema")
+        grupo = QActionGroup(self)
+        grupo.triggered.connect(self.trocar_tema)
+        for chave, cores in tema.TEMAS.items():
+            acao = QAction(cores["nome"], self)
+            acao.setCheckable(True)
+            acao.setData(chave)
+            acao.setChecked(chave == tema.tema_salvo())
+            grupo.addAction(acao)
+            menu.addAction(acao)
+
+    def trocar_tema(self, acao):
+        nome = acao.data()
+        tema.aplicar_tema(nome)
+        tema.salvar_tema(nome)
+        self.statusBar().showMessage(f"Tema {acao.text()} aplicado.", 3000)
 
     def montar_formulario(self):
         self.campo_titulo = QLineEdit()

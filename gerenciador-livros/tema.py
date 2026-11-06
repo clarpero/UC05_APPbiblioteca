@@ -1,0 +1,147 @@
+"""Temas da aplicação: as cores de cada tema, a paleta do Qt e a folha de estilo."""
+
+from string import Template
+
+from PySide6.QtCore import QSettings
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication
+
+TEMAS = {
+    "claro": {
+        "nome": "Claro",
+        "fundo": "#f3f4f6",
+        "superficie": "#ffffff",
+        "zebra": "#f5f7fa",
+        "texto": "#1f2328",
+        "texto_suave": "#59636e",
+        "borda": "#cfd6dd",
+        "botao": "#e9edf1",
+        "primaria": "#0b5ed7",
+        "primaria_hover": "#0a4fb5",
+        "primaria_texto": "#ffffff",
+        "selecao": "#cfe2ff",
+    },
+    "escuro": {
+        "nome": "Escuro",
+        "fundo": "#1b1f24",
+        "superficie": "#24292f",
+        "zebra": "#2b3138",
+        "texto": "#e6edf3",
+        "texto_suave": "#9da7b3",
+        "borda": "#3d444d",
+        "botao": "#32383f",
+        "primaria": "#4493f8",
+        "primaria_hover": "#6aa9fa",
+        "primaria_texto": "#0d1117",
+        "selecao": "#1f4a7a",
+    },
+    "biblioteca": {
+        "nome": "Biblioteca",
+        "fundo": "#efe4d2",          # pergaminho
+        "superficie": "#fbf6ee",     # papel
+        "zebra": "#f5ecdf",
+        "texto": "#3b2618",          # tinta marrom-escura
+        "texto_suave": "#6e5340",
+        "borda": "#c4a888",
+        "botao": "#e6d5bd",
+        "primaria": "#7b3f1d",       # couro de encadernação
+        "primaria_hover": "#62311a",
+        "primaria_texto": "#fbf6ee",
+        "selecao": "#e3c9a6",
+    },
+}
+
+# Qual cor do tema pinta cada parte padrão dos componentes do Qt.
+PAPEIS = [
+    (QPalette.ColorRole.Window, "fundo"),
+    (QPalette.ColorRole.WindowText, "texto"),
+    (QPalette.ColorRole.Base, "superficie"),
+    (QPalette.ColorRole.AlternateBase, "zebra"),
+    (QPalette.ColorRole.Text, "texto"),
+    (QPalette.ColorRole.Button, "botao"),
+    (QPalette.ColorRole.ButtonText, "texto"),
+    (QPalette.ColorRole.Highlight, "selecao"),
+    (QPalette.ColorRole.HighlightedText, "texto"),
+    (QPalette.ColorRole.PlaceholderText, "texto_suave"),
+    (QPalette.ColorRole.ToolTipBase, "superficie"),
+    (QPalette.ColorRole.ToolTipText, "texto"),
+]
+
+# Detalhes que a paleta não cobre: bordas arredondadas, títulos e botão principal.
+FOLHA = Template("""
+QGroupBox {
+    border: 1px solid $borda;
+    border-radius: 8px;
+    margin-top: 14px;
+    padding: 12px 8px 8px 8px;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 4px;
+    color: $primaria;
+}
+QLineEdit {
+    background-color: $superficie;
+    border: 1px solid $borda;
+    border-radius: 6px;
+    padding: 5px 8px;
+}
+QLineEdit:focus {
+    border: 2px solid $primaria;
+}
+QPushButton[variante="primario"] {
+    background-color: $primaria;
+    color: $primaria_texto;
+    border: 1px solid $primaria;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: bold;
+}
+QPushButton[variante="primario"]:hover {
+    background-color: $primaria_hover;
+}
+QPushButton[variante="primario"]:disabled {
+    background-color: $botao;
+    color: $texto_suave;
+    border-color: $borda;
+}
+QTableWidget {
+    gridline-color: $borda;
+}
+QHeaderView::section {
+    background-color: $botao;
+    color: $texto;
+    padding: 5px;
+    border: none;
+    border-bottom: 1px solid $borda;
+    font-weight: bold;
+}
+""")
+
+
+def aplicar_tema(nome):
+    cores = TEMAS[nome]
+    paleta = QPalette()
+    for papel, token in PAPEIS:
+        paleta.setColor(papel, QColor(cores[token]))
+    for papel in (QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText, QPalette.ColorRole.WindowText):
+        paleta.setColor(QPalette.ColorGroup.Disabled, papel, QColor(cores["texto_suave"]))
+
+    app = QApplication.instance()
+    app.setStyle("Fusion")
+    app.setPalette(paleta)
+    app.setStyleSheet(FOLHA.substitute(cores))
+
+
+def _configuracoes():
+    return QSettings("Senac-PI", "GerenciadorLivros")
+
+
+def tema_salvo():
+    nome = _configuracoes().value("tema", "claro")
+    return nome if nome in TEMAS else "claro"
+
+
+def salvar_tema(nome):
+    _configuracoes().setValue("tema", nome)
