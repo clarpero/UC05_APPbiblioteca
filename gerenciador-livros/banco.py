@@ -47,3 +47,7 @@ def obter_livro(conn, livro_id):
     return conn.execute(
         "SELECT id, titulo, autor, ano, isbn FROM livro WHERE id = ?", (livro_id,)
     ).fetchone()
+
+def excluir_livro(conn, livro_id):
+    with conn:
+        conn.execute("DELETE FROM livro WHERE id = ?", (livro_id,))

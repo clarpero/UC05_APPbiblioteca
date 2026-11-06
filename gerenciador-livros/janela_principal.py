@@ -26,6 +26,7 @@ class Janela_Livros(QMainWindow):
         self.setWindowTitle("Gerenciador de Livros")
         self.resize(1000, 560)
         self.conn = banco.conectar()
+        self.livro_selecionado = None  # livro clicado na tabela (ou None)
 
         central = QWidget()
         self.layout_principal = QHBoxLayout(central)
@@ -39,6 +40,7 @@ class Janela_Livros(QMainWindow):
 
         self.conectar_eventos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
+        self.botao_excluir.clicked.connect(self.excluir)
 
     def montar_menu(self):
         menu = self.menuBar().addMenu("&Tema")
@@ -81,7 +83,8 @@ class Janela_Livros(QMainWindow):
         self.botao_excluir = QPushButton("Excluir")
         self.botao_limpar = QPushButton("Limpar")
 
-        # Atualizar e Excluir serão implementados numa etapa posterior.
+        # Atualizar será implementado numa etapa posterior.
+        # Excluir começa desligado: só funciona com um livro selecionado.
         self.botao_atualizar.setEnabled(False)
         self.botao_excluir.setEnabled(False)
 
@@ -196,17 +199,21 @@ class Janela_Livros(QMainWindow):
     def selecionar_livro(self):
         linhas = self.tabela.selectionModel().selectedRows()
         if not linhas:
+            self.livro_selecionado = None
             self.botao_cadastrar.setEnabled(True)
+            self.botao_excluir.setEnabled(False)
             self.limpar_campos()
             return
 
         livro_id = int(self.tabela.item(linhas[0].row(), 0).text())
         livro = banco.obter_livro(self.conn, livro_id)
+        self.livro_selecionado = livro
         self.campo_titulo.setText(livro["titulo"])
         self.campo_autor.setText(livro["autor"])
         self.campo_ano.setText("" if livro["ano"] is None else str(livro["ano"]))
         self.campo_isbn.setText(livro["isbn"] or "")
         self.botao_cadastrar.setEnabled(False)
+        self.botao_excluir.setEnabled(True)
         self.statusBar().showMessage(
             f'Livro "{livro["titulo"]}" selecionado. Clique em Limpar para cadastrar outro.', 8000
         )
@@ -227,3 +234,27 @@ class Janela_Livros(QMainWindow):
         grupo = QGroupBox("Livros cadastrados")
         grupo.setLayout(coluna)
         return grupo
+
+    def excluir(self):
+        livro = self.livro_selecionado
+        if livro is None:
+            self.statusBar().showMessage("Selecione um livro na tabela para excluir.", 5000)
+            return
+
+        resposta = QMessageBox.question(
+            self,
+            "Excluir livro",
+            f'Excluir o livro "{livro["titulo"]}" (ID {livro["id"]})?\n'
+            "Essa ação não pode ser desfeita.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if resposta != QMessageBox.StandardButton.Yes:
+            self.statusBar().showMessage("Exclusão cancelada.", 3000)
+            return
+
+        banco.excluir_livro(self.conn, livro["id"])
+        self.limpar_campos()
+        self.campo_pesquisa.clear()
+        self.mostrar_na_tabela(banco.listar_livros(self.conn))
+        self.statusBar().showMessage(f'Livro "{livro["titulo"]}" excluído.', 5000)
