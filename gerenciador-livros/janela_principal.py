@@ -1,10 +1,8 @@
-import banco
-import tema
-from validacao import ErroValidacao, validar_livro
-from PySide6.QtGui import QIntValidator
+from PySide6.QtGui import QAction, QActionGroup, QIntValidator
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QGridLayout,
+    QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -16,26 +14,28 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
-    )
+)
+
+import banco
+import tema
+from validacao import ErroValidacao, validar_livro
 
 class Janela_Livros(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gerenciador de Livros")
-        self.resize (900,520)
+        self.resize(1000, 560)
         self.conn = banco.conectar()
 
         central = QWidget()
-        self.layout_principal = QVBoxLayout(central)
+        self.layout_principal = QHBoxLayout(central)
         self.setCentralWidget(central)
         self.montar_menu()
 
-        self.layout_principal.addLayout(self.montar_formulario())
-        self.layout_principal.addLayout(self.montar_acoes())
+        self.layout_principal.addWidget(self.montar_coluna_cadastro(), 1)
+        self.layout_principal.addWidget(self.montar_coluna_livros(), 2)
         self.botao_cadastrar.setProperty("variante", "primario")
-        self.layout_principal.addLayout(self.montar_pesquisa())
-        self.layout_principal.addWidget(self.montar_tabela())
-        self.statusBar().showMessage('Pronto. Cadastre o primeiro livro.')
+        self.statusBar().showMessage("Pronto. Cadastre o primeiro livro.")
 
         self.conectar_eventos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
@@ -68,18 +68,12 @@ class Janela_Livros(QMainWindow):
         self.campo_isbn = QLineEdit()
         self.campo_isbn.setPlaceholderText('13 dígitos, com ou sem hífen')
 
-        grade = QGridLayout()
-        grade.addWidget(QLabel('Título *'), 0, 0) 
-        grade.addWidget(self.campo_titulo, 0, 1)
-        grade.addWidget(QLabel('Autor *'), 0, 2)
-        grade.addWidget(self.campo_autor, 0, 3)
-        grade.addWidget(QLabel('Ano'), 1, 0)
-        grade.addWidget(self.campo_ano, 1, 1)
-        grade.addWidget(QLabel('ISBN'), 1, 2)
-        grade.addWidget(self.campo_isbn, 1, 3)
-        grade.setColumnStretch(1, 1)
-        grade.setColumnStretch(3, 1)
-        return grade
+        formulario = QFormLayout()
+        formulario.addRow("Título *", self.campo_titulo)
+        formulario.addRow("Autor *", self.campo_autor)
+        formulario.addRow("Ano", self.campo_ano)
+        formulario.addRow("ISBN", self.campo_isbn)
+        return formulario
 
     def montar_acoes(self):
         self.botao_cadastrar = QPushButton("Cadastrar")
@@ -216,3 +210,20 @@ class Janela_Livros(QMainWindow):
         self.statusBar().showMessage(
             f'Livro "{livro["titulo"]}" selecionado. Clique em Limpar para cadastrar outro.', 8000
         )
+
+    def montar_coluna_cadastro(self):
+        coluna = QVBoxLayout()
+        coluna.addLayout(self.montar_formulario())
+        coluna.addLayout(self.montar_acoes())
+        coluna.addStretch()
+        grupo = QGroupBox("Cadastro do livro")
+        grupo.setLayout(coluna)
+        return grupo
+
+    def montar_coluna_livros(self):
+        coluna = QVBoxLayout()
+        coluna.addLayout(self.montar_pesquisa())
+        coluna.addWidget(self.montar_tabela())
+        grupo = QGroupBox("Livros cadastrados")
+        grupo.setLayout(coluna)
+        return grupo
