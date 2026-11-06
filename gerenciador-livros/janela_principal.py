@@ -1,4 +1,5 @@
 import banco
+from validacao import ErroValidacao, validar_livro
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -32,6 +33,9 @@ class Janela_Livros(QMainWindow):
         self.layout_principal.addLayout(self.montar_pesquisa())
         self.layout_principal.addWidget(self.montar_tabela())
         self.statusBar().showMessage('Pronto. Cadastre o primeiro livro.')
+
+        self.conectar_eventos()
+        self.mostrar_na_tabela(banco.listar_livros(self.conn))
 
     def montar_formulario(self):
         self.campo_titulo = QLineEdit()
@@ -115,4 +119,41 @@ class Janela_Livros(QMainWindow):
                 self.tabela.setItem(linha, coluna, QTableWidgetItem(texto))
         self.tabela.clearSelection()
 
-    
+    def avisar(self, texto, nome_campo):
+        QMessageBox.warning(self, "Gerenciador de Livros", texto)
+        campos = {
+            "titulo": self.campo_titulo,
+            "autor": self.campo_autor,
+            "ano": self.campo_ano,
+            "isbn": self.campo_isbn,
+        }
+        campos[nome_campo].setFocus()
+
+    def cadastrar(self):
+        try:
+            livro = validar_livro(
+                self.campo_titulo.text(),
+                self.campo_autor.text(),
+                self.campo_ano.text(),
+                self.campo_isbn.text(),
+            )
+        except ErroValidacao as erro:
+            self.avisar(str(erro), erro.campo)
+            return
+
+        novo_id = banco.inserir_livro(
+            self.conn, livro["titulo"], livro["autor"], livro["ano"], livro["isbn"]
+        )
+        self.limpar_campos()
+        self.mostrar_na_tabela(banco.listar_livros(self.conn))
+        self.statusBar().showMessage(f'Livro "{livro["titulo"]}" cadastrado com o ID {novo_id}.', 5000)
+
+    def limpar_campos(self):
+        for campo in (self.campo_titulo, self.campo_autor, self.campo_ano, self.campo_isbn):
+            campo.clear()
+        self.tabela.clearSelection()
+        self.campo_titulo.setFocus()
+
+    def conectar_eventos(self):
+        self.botao_cadastrar.clicked.connect(self.cadastrar)
+        self.botao_limpar.clicked.connect(self.limpar_campos)
