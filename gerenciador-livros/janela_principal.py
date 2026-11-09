@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 import banco
 import icones
 import tema
+from abertura import AberturaLivro
 from livro import CapaLivro, FundoLivro
 from validacao import ErroValidacao, validar_livro
 
@@ -36,6 +37,7 @@ class Janela_Livros(QMainWindow):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)  # cantos transparentes
         self.conn = banco.conectar()
         self.livro_selecionado = None  # livro clicado na tabela (ou None)
+        self.pode_fechar = False       # vira True depois da animação de fechar
 
         capa = CapaLivro()
         layout_capa = QVBoxLayout(capa)
@@ -188,8 +190,21 @@ class Janela_Livros(QMainWindow):
         return self.tabela
 
     def closeEvent(self, evento):
-                self.conn.close()
-                super().closeEvent(evento)
+        if not self.pode_fechar:
+            evento.ignore()  # ainda não: primeiro o livro se fecha
+            centro = self.geometry().center()
+            self.hide()
+            self.fechamento = AberturaLivro(tema.cores_atuais(), fechando=True, centro=centro)
+            self.fechamento.terminou.connect(self.fechar_de_vez)
+            self.fechamento.iniciar()
+            return
+        self.conn.close()
+        super().closeEvent(evento)
+
+    def fechar_de_vez(self):
+        self.pode_fechar = True
+        self.close()
+        self.fechamento.close()
 
     def mostrar_na_tabela(self, livros):
         self.tabela.setRowCount(len(livros))

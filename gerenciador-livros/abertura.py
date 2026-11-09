@@ -8,23 +8,24 @@ from PySide6.QtWidgets import QApplication, QWidget
 class AberturaLivro(QWidget):
     terminou = Signal()  # avisa o main.py que a abertura acabou
 
-    def __init__(self, cores):
+    def __init__(self, cores, fechando=False, centro=None):
         super().__init__()
         self.cores = cores          # as cores do tema escolhido
-        self.progresso = 0.0        # 0 = livro fechado, 1 = livro aberto
+        self.progresso = 1.0 if fechando else 0.0   # 0 = livro fechado, 1 = livro aberto
         self.terminado = False
 
         self.setWindowFlags(Qt.WindowType.SplashScreen | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(480, 320)
         self.setToolTip("Clique para pular")
-        tela = QApplication.primaryScreen().availableGeometry()
-        self.move(tela.center() - self.rect().center())
+        if centro is None:
+            centro = QApplication.primaryScreen().availableGeometry().center()
+        self.move(centro - self.rect().center())
 
         self.animacao = QVariantAnimation(self)
-        self.animacao.setStartValue(0.0)
-        self.animacao.setEndValue(1.0)
-        self.animacao.setDuration(1600)
+        self.animacao.setStartValue(self.progresso)
+        self.animacao.setEndValue(0.0 if fechando else 1.0)
+        self.animacao.setDuration(1100 if fechando else 1600)
         self.animacao.setEasingCurve(QEasingCurve.Type.InOutCubic)
         self.animacao.valueChanged.connect(self.avancar)
         self.animacao.finished.connect(lambda: QTimer.singleShot(400, self.concluir))
