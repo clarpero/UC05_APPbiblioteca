@@ -144,6 +144,11 @@ QLabel#titulo_pagina {
     font-size: 13pt;
     font-weight: bold;
 }
+QLabel#citacao {
+    color: $texto_suave;
+    font-size: 10pt;
+    padding: 12px 4px 4px 48px;
+}
 QLineEdit {
     background-color: $superficie;
     border: 1px solid $borda;

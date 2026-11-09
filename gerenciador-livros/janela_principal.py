@@ -309,6 +309,7 @@ class Janela_Livros(QMainWindow):
         coluna.addLayout(self.montar_formulario())
         coluna.addLayout(self.montar_acoes())
         coluna.addStretch()
+        coluna.addWidget(self.montar_citacao())
         pagina = QFrame()
         pagina.setObjectName("pagina_esquerda")
         pagina.setLayout(coluna)
@@ -410,3 +411,14 @@ class Janela_Livros(QMainWindow):
             (self.botao_mostrar_todos, "mostrar_todos"),
         ):
             botao.setIcon(icones.criar_icone(nome, cores["texto"], cores["texto_suave"]))
+
+    def montar_citacao(self):
+        citacao = QLabel(
+            "“Se a educação sozinha não transforma a sociedade, "
+            "sem ela tampouco a sociedade muda.”\n"
+            "(Freire, 2000, p. 67)"
+        )
+        citacao.setObjectName("citacao")
+        citacao.setWordWrap(True)
+        citacao.setAlignment(Qt.AlignmentFlag.AlignRight)
+        return citacao
