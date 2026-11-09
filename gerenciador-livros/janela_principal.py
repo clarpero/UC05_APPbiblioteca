@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 import banco
+import icones
 import tema
 from validacao import ErroValidacao, validar_livro
 
@@ -56,6 +57,7 @@ class Janela_Livros(QMainWindow):
         self.statusBar().showMessage("Pronto. Cadastre o primeiro livro.")
 
         self.conectar_eventos()
+        self.aplicar_icones()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
 
     def statusBar(self):
@@ -112,6 +114,7 @@ class Janela_Livros(QMainWindow):
         nome = acao.data()
         tema.aplicar_tema(nome)
         tema.salvar_tema(nome)
+        self.aplicar_icones()
         self.statusBar().showMessage(f"Tema {acao.text()} aplicado.", 3000)
 
     def montar_formulario(self):
@@ -371,3 +374,17 @@ class Janela_Livros(QMainWindow):
         self.campo_pesquisa.clear()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
         self.statusBar().showMessage(f'Livro ID {livro["id"]} atualizado.', 5000)
+
+    def aplicar_icones(self):
+        cores = tema.cores_atuais()
+        self.botao_cadastrar.setIcon(
+            icones.criar_icone("cadastrar", cores["primaria_texto"], cores["texto_suave"])
+        )
+        for botao, nome in (
+            (self.botao_atualizar, "atualizar"),
+            (self.botao_excluir, "excluir"),
+            (self.botao_limpar, "limpar"),
+            (self.botao_pesquisar, "pesquisar"),
+            (self.botao_mostrar_todos, "mostrar_todos"),
+        ):
+            botao.setIcon(icones.criar_icone(nome, cores["texto"], cores["texto_suave"]))
