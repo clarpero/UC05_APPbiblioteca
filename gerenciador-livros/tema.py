@@ -20,6 +20,9 @@ TEMAS = {
         "primaria_hover": "#0a4fb5",
         "primaria_texto": "#ffffff",
         "selecao": "#cfe2ff",
+        "capa": "#2b4c7e",
+        "capa_texto": "#ffffff",
+        "sombra": "#d9dee4",
     },
     "escuro": {
         "nome": "Escuro",
@@ -34,6 +37,9 @@ TEMAS = {
         "primaria_hover": "#6aa9fa",
         "primaria_texto": "#0d1117",
         "selecao": "#1f4a7a",
+        "capa": "#0d1117",
+        "capa_texto": "#e6edf3",
+        "sombra": "#1a1f25",
     },
     "biblioteca": {
         "nome": "Biblioteca",
@@ -48,6 +54,9 @@ TEMAS = {
         "primaria_hover": "#62311a",
         "primaria_texto": "#fbf6ee",
         "selecao": "#e3c9a6",
+        "capa": "#5b2f18",           # couro escuro da capa
+        "capa_texto": "#f6ead8",
+        "sombra": "#d8c3a3",
     },
 }
 
@@ -67,19 +76,65 @@ PAPEIS = [
     (QPalette.ColorRole.ToolTipText, "texto"),
 ]
 
-# Detalhes que a paleta não cobre: bordas arredondadas, títulos e botão principal.
+# Detalhes que a paleta não cobre: o livro (capa, páginas, lombada) e o botão principal.
 FOLHA = Template("""
-QGroupBox {
-    border: 1px solid $borda;
-    border-radius: 8px;
-    margin-top: 14px;
-    padding: 12px 8px 8px 8px;
+QFrame#capa {
+    background-color: $capa;
+    border-radius: 18px;
 }
-QGroupBox::title {
-    subcontrol-origin: margin;
-    left: 12px;
-    padding: 0 4px;
+QLabel#titulo_janela {
+    color: $capa_texto;
+    font-size: 12pt;
+    font-weight: bold;
+}
+QToolButton {
+    color: $capa_texto;
+    background-color: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-weight: bold;
+}
+QToolButton:hover {
+    background-color: rgba(255, 255, 255, 40);
+}
+QToolButton#fechar:hover {
+    background-color: #c42b1c;
+    color: #ffffff;
+}
+QToolButton::menu-indicator {
+    image: none;
+}
+QStatusBar {
+    color: $capa_texto;
+}
+QStatusBar::item {
+    border: none;
+}
+QFrame#pagina_esquerda, QFrame#pagina_direita {
+    background-color: $superficie;
+    border: 1px solid $borda;
+}
+QFrame#pagina_esquerda {
+    border-right: none;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+QFrame#pagina_direita {
+    border-left: none;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+QFrame#lombada {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 $superficie, stop:0.5 $sombra, stop:1 $superficie);
+    border-top: 1px solid $borda;
+    border-bottom: 1px solid $borda;
+}
+QLabel#titulo_pagina {
     color: $primaria;
+    font-size: 13pt;
+    font-weight: bold;
 }
 QLineEdit {
     background-color: $superficie;

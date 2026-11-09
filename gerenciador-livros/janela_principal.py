@@ -1,17 +1,21 @@
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QIntValidator
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
-    QGroupBox,
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
+    QStatusBar,
     QTableWidget,
     QTableWidgetItem,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -20,29 +24,79 @@ import banco
 import tema
 from validacao import ErroValidacao, validar_livro
 
+
 class Janela_Livros(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gerenciador de Livros")
-        self.resize(1000, 560)
+        self.resize(1000, 600)
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)          # sem a moldura do Windows
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)  # cantos transparentes
         self.conn = banco.conectar()
         self.livro_selecionado = None  # livro clicado na tabela (ou None)
 
-        central = QWidget()
-        self.layout_principal = QHBoxLayout(central)
-        self.setCentralWidget(central)
-        self.montar_menu()
+        capa = QFrame()
+        capa.setObjectName("capa")
+        layout_capa = QVBoxLayout(capa)
+        layout_capa.setContentsMargins(18, 12, 18, 8)
+        self.barra_mensagens = QStatusBar()
 
-        self.layout_principal.addWidget(self.montar_coluna_cadastro(), 1)
-        self.layout_principal.addWidget(self.montar_coluna_livros(), 2)
+        paginas = QHBoxLayout()
+        paginas.setSpacing(0)
+        paginas.addWidget(self.montar_coluna_cadastro(), 1)
+        paginas.addWidget(self.montar_lombada())
+        paginas.addWidget(self.montar_coluna_livros(), 2)
+
+        layout_capa.addLayout(self.montar_barra_titulo())
+        layout_capa.addLayout(paginas)
+        layout_capa.addWidget(self.barra_mensagens)
+        self.setCentralWidget(capa)
+
         self.botao_cadastrar.setProperty("variante", "primario")
         self.statusBar().showMessage("Pronto. Cadastre o primeiro livro.")
 
         self.conectar_eventos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
 
+    def statusBar(self):
+        # O rodapé agora mora dentro da capa; as mensagens continuam iguais.
+        return self.barra_mensagens
+
+    def mousePressEvent(self, evento):
+        # Sem a barra do Windows, arrastar a capa move a janela.
+        if evento.button() == Qt.MouseButton.LeftButton:
+            self.windowHandle().startSystemMove()
+
+    def montar_barra_titulo(self):
+        titulo = QLabel("Gerenciador de Livros")
+        titulo.setObjectName("titulo_janela")
+
+        botao_minimizar = QToolButton()
+        botao_minimizar.setText("–")
+        botao_minimizar.setToolTip("Minimizar")
+        botao_minimizar.clicked.connect(self.showMinimized)
+
+        botao_fechar = QToolButton()
+        botao_fechar.setText("✕")
+        botao_fechar.setObjectName("fechar")
+        botao_fechar.setToolTip("Fechar")
+        botao_fechar.clicked.connect(self.close)
+
+        barra = QHBoxLayout()
+        barra.addWidget(titulo)
+        barra.addStretch()
+        barra.addWidget(self.montar_menu())
+        barra.addWidget(botao_minimizar)
+        barra.addWidget(botao_fechar)
+        return barra
+
     def montar_menu(self):
-        menu = self.menuBar().addMenu("&Tema")
+        self.botao_tema = QToolButton()
+        self.botao_tema.setText("&Tema")
+        self.botao_tema.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(self.botao_tema)
+        self.botao_tema.setMenu(menu)
+
         grupo = QActionGroup(self)
         grupo.triggered.connect(self.trocar_tema)
         for chave, cores in tema.TEMAS.items():
@@ -52,6 +106,7 @@ class Janela_Livros(QMainWindow):
             acao.setChecked(chave == tema.tema_salvo())
             grupo.addAction(acao)
             menu.addAction(acao)
+        return self.botao_tema
 
     def trocar_tema(self, acao):
         nome = acao.data()
@@ -222,21 +277,35 @@ class Janela_Livros(QMainWindow):
         )
 
     def montar_coluna_cadastro(self):
+        titulo = QLabel("Cadastro do livro")
+        titulo.setObjectName("titulo_pagina")
         coluna = QVBoxLayout()
+        coluna.addWidget(titulo)
         coluna.addLayout(self.montar_formulario())
         coluna.addLayout(self.montar_acoes())
         coluna.addStretch()
-        grupo = QGroupBox("Cadastro do livro")
-        grupo.setLayout(coluna)
-        return grupo
+        pagina = QFrame()
+        pagina.setObjectName("pagina_esquerda")
+        pagina.setLayout(coluna)
+        return pagina
 
     def montar_coluna_livros(self):
+        titulo = QLabel("Livros cadastrados")
+        titulo.setObjectName("titulo_pagina")
         coluna = QVBoxLayout()
+        coluna.addWidget(titulo)
         coluna.addLayout(self.montar_pesquisa())
         coluna.addWidget(self.montar_tabela())
-        grupo = QGroupBox("Livros cadastrados")
-        grupo.setLayout(coluna)
-        return grupo
+        pagina = QFrame()
+        pagina.setObjectName("pagina_direita")
+        pagina.setLayout(coluna)
+        return pagina
+
+    def montar_lombada(self):
+        lombada = QFrame()
+        lombada.setObjectName("lombada")
+        lombada.setFixedWidth(16)
+        return lombada
 
     def excluir(self):
         livro = self.livro_selecionado
