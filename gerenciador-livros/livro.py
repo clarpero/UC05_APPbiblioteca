@@ -51,3 +51,26 @@ class FundoLivro(QWidget):
         pintor.setPen(Qt.PenStyle.NoPen)
         pintor.setBrush(QColor(tema.cores_atuais()["fita"]))
         pintor.drawPath(caminho)
+
+class CapaLivro(QFrame):
+    """A capa do livro. Desenha a pilha de folhas atrás das duas páginas."""
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("capa")
+        self.paginas = []  # lista de (página, lado), preenchida pela janela
+
+    def paintEvent(self, evento):
+        super().paintEvent(evento)  # primeiro a cor da capa, que vem da folha de estilo
+        cores = tema.cores_atuais()
+        pintor = QPainter(self)
+        pintor.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pintor.setPen(QPen(QColor(cores["borda"]), 1))
+        pintor.setBrush(QColor(cores["superficie"]))
+        for pagina, lado in self.paginas:
+            area = QRectF(pagina.geometry())
+            for folha in (3, 2, 1):  # da folha mais funda para a mais próxima
+                desvio = folha * 3
+                dx = -desvio if lado == "esquerda" else desvio
+                pintor.drawRoundedRect(area.translated(dx, desvio), 10, 10)
+        pintor.end()

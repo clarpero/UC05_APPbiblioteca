@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 import banco
 import icones
 import tema
-from livro import FundoLivro
+from livro import CapaLivro, FundoLivro
 from validacao import ErroValidacao, validar_livro
 
 
@@ -37,8 +37,7 @@ class Janela_Livros(QMainWindow):
         self.conn = banco.conectar()
         self.livro_selecionado = None  # livro clicado na tabela (ou None)
 
-        capa = QFrame()
-        capa.setObjectName("capa")
+        capa = CapaLivro()
         layout_capa = QVBoxLayout(capa)
         layout_capa.setContentsMargins(18, 12, 18, 8)
         self.barra_mensagens = QStatusBar()
@@ -46,6 +45,7 @@ class Janela_Livros(QMainWindow):
         pagina_esquerda = self.montar_coluna_cadastro()
         lombada = self.montar_lombada()
         pagina_direita = self.montar_coluna_livros()
+        capa.paginas = [(pagina_esquerda, "esquerda"), (pagina_direita, "direita")]
 
         paginas = QHBoxLayout()
         paginas.setSpacing(0)
@@ -55,6 +55,7 @@ class Janela_Livros(QMainWindow):
 
         layout_capa.addLayout(self.montar_barra_titulo())
         layout_capa.addLayout(paginas)
+        layout_capa.addSpacing(8)  # espaço para a pilha de folhas aparecer
         layout_capa.addWidget(self.barra_mensagens)
         self.setCentralWidget(FundoLivro(capa, lombada))
 
