@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 import banco
 import icones
 import tema
+from livro import FundoLivro
 from validacao import ErroValidacao, validar_livro
 
 
@@ -30,7 +31,7 @@ class Janela_Livros(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gerenciador de Livros")
-        self.resize(1000, 600)
+        self.resize(1050, 670)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)          # sem a moldura do Windows
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)  # cantos transparentes
         self.conn = banco.conectar()
@@ -42,16 +43,20 @@ class Janela_Livros(QMainWindow):
         layout_capa.setContentsMargins(18, 12, 18, 8)
         self.barra_mensagens = QStatusBar()
 
+        pagina_esquerda = self.montar_coluna_cadastro()
+        lombada = self.montar_lombada()
+        pagina_direita = self.montar_coluna_livros()
+
         paginas = QHBoxLayout()
         paginas.setSpacing(0)
-        paginas.addWidget(self.montar_coluna_cadastro(), 1)
-        paginas.addWidget(self.montar_lombada())
-        paginas.addWidget(self.montar_coluna_livros(), 2)
+        paginas.addWidget(pagina_esquerda, 1)
+        paginas.addWidget(lombada)
+        paginas.addWidget(pagina_direita, 2)
 
         layout_capa.addLayout(self.montar_barra_titulo())
         layout_capa.addLayout(paginas)
         layout_capa.addWidget(self.barra_mensagens)
-        self.setCentralWidget(capa)
+        self.setCentralWidget(FundoLivro(capa, lombada))
 
         self.botao_cadastrar.setProperty("variante", "primario")
         self.statusBar().showMessage("Pronto. Cadastre o primeiro livro.")
@@ -115,6 +120,7 @@ class Janela_Livros(QMainWindow):
         tema.aplicar_tema(nome)
         tema.salvar_tema(nome)
         self.aplicar_icones()
+        self.update()  # redesenha sombra, fita e folhas com as cores novas
         self.statusBar().showMessage(f"Tema {acao.text()} aplicado.", 3000)
 
     def montar_formulario(self):

@@ -25,6 +25,7 @@ TEMAS = {
         "capa": "#2b4c7e",
         "capa_texto": "#ffffff",
         "sombra": "#d9dee4",
+        "fita": "#c62828",
     },
     "escuro": {
         "nome": "Escuro",
@@ -42,6 +43,7 @@ TEMAS = {
         "capa": "#0d1117",
         "capa_texto": "#e6edf3",
         "sombra": "#1a1f25",
+        "fita": "#e0a526",
     },
     "biblioteca": {
         "nome": "Biblioteca",
@@ -59,7 +61,8 @@ TEMAS = {
         "capa": "#5b2f18",           # couro escuro da capa
         "capa_texto": "#f6ead8",
         "sombra": "#d8c3a3",
-        "textura": "papel.png",      # imagem de fundo das páginas
+        "textura": "papel.png",
+        "fita": "#7d1f1f",      # imagem de fundo das páginas
     },
 }
 
