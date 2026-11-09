@@ -114,14 +114,16 @@ QStatusBar {
 QStatusBar::item {
     border: none;
 }
-QFrame#pagina_esquerda, QFrame#pagina_direita {
-    background-color: $superficie;
-    border: 1px solid $borda;
-}
+
 QFrame#pagina_esquerda, QFrame#pagina_direita {
     background-color: $superficie;
     $imagem_pagina
     border: 1px solid $borda;
+}
+QFrame#pagina_esquerda {
+    border-right: none;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
 }
 QFrame#pagina_direita {
     border-left: none;
