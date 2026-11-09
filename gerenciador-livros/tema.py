@@ -1,11 +1,13 @@
 """Temas da aplicação: as cores de cada tema, a paleta do Qt e a folha de estilo."""
 
+from pathlib import Path
 from string import Template
 
 from PySide6.QtCore import QSettings
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
+PASTA_IMAGENS = Path(__file__).with_name("imagens")
 TEMAS = {
     "claro": {
         "nome": "Claro",
@@ -57,6 +59,7 @@ TEMAS = {
         "capa": "#5b2f18",           # couro escuro da capa
         "capa_texto": "#f6ead8",
         "sombra": "#d8c3a3",
+        "textura": "papel.png",      # imagem de fundo das páginas
     },
 }
 
@@ -115,10 +118,10 @@ QFrame#pagina_esquerda, QFrame#pagina_direita {
     background-color: $superficie;
     border: 1px solid $borda;
 }
-QFrame#pagina_esquerda {
-    border-right: none;
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
+QFrame#pagina_esquerda, QFrame#pagina_direita {
+    background-color: $superficie;
+    $imagem_pagina
+    border: 1px solid $borda;
 }
 QFrame#pagina_direita {
     border-left: none;
@@ -175,7 +178,16 @@ QHeaderView::section {
 """)
 
 
+_atual = "claro"  # nome do tema em uso
+
+
+def cores_atuais():
+    return TEMAS[_atual]
+
+
 def aplicar_tema(nome):
+    global _atual
+    _atual = nome
     cores = TEMAS[nome]
     paleta = QPalette()
     for papel, token in PAPEIS:
@@ -183,10 +195,17 @@ def aplicar_tema(nome):
     for papel in (QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText, QPalette.ColorRole.WindowText):
         paleta.setColor(QPalette.ColorGroup.Disabled, papel, QColor(cores["texto_suave"]))
 
+    valores = dict(cores)
+    if "textura" in cores:
+        caminho = (PASTA_IMAGENS / cores["textura"]).as_posix()
+        valores["imagem_pagina"] = f'background-image: url("{caminho}");'
+    else:
+        valores["imagem_pagina"] = ""
+
     app = QApplication.instance()
     app.setStyle("Fusion")
     app.setPalette(paleta)
-    app.setStyleSheet(FOLHA.substitute(cores))
+    app.setStyleSheet(FOLHA.substitute(valores))
 
 
 def _configuracoes():
