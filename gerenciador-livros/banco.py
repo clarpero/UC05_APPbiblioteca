@@ -37,45 +37,51 @@ def criar_admin(conn):
                 (senha_hash, sal),
             )
 
-def inserir_livro(conn, titulo, autor, ano, isbn):
+# Livro junto com quantos exemplares estão livres (vem da visão disponibilidade).
+SELECT_LIVRO = (
+    "SELECT l.id, l.titulo, l.autor, l.ano, l.isbn, l.quantidade, d.disponiveis "
+    "FROM livro l JOIN disponibilidade d ON d.livro_id = l.id "
+)
+
+
+def inserir_livro(conn, titulo, autor, ano, isbn, quantidade):
     with conn:
         cursor = conn.execute(
-            "INSERT INTO livro (titulo, autor, ano, isbn) VALUES (?, ?, ?, ?)",
-            (titulo, autor, ano, isbn),
+            "INSERT INTO livro (titulo, autor, ano, isbn, quantidade) VALUES (?, ?, ?, ?, ?)",
+            (titulo, autor, ano, isbn, quantidade),
         )
     return cursor.lastrowid
 
 
 def listar_livros(conn):
-    return conn.execute(
-        "SELECT id, titulo, autor, ano, isbn FROM livro ORDER BY id"
-    ).fetchall()
+    return conn.execute(SELECT_LIVRO + "ORDER BY l.id").fetchall()
+
 
 def pesquisar_livros(conn, termo):
     padrao = f"%{termo}%"
     return conn.execute(
-        "SELECT id, titulo, autor, ano, isbn FROM livro "
-        "WHERE titulo LIKE ? OR autor LIKE ? ORDER BY id",
+        SELECT_LIVRO + "WHERE l.titulo LIKE ? OR l.autor LIKE ? ORDER BY l.id",
         (padrao, padrao),
     ).fetchall()
 
 
 def obter_livro(conn, livro_id):
-    return conn.execute(
-        "SELECT id, titulo, autor, ano, isbn FROM livro WHERE id = ?", (livro_id,)
-    ).fetchone()
+    return conn.execute(SELECT_LIVRO + "WHERE l.id = ?", (livro_id,)).fetchone()
+
 
 def excluir_livro(conn, livro_id):
     with conn:
         conn.execute("DELETE FROM livro WHERE id = ?", (livro_id,))
 
-def atualizar_livro(conn, livro_id, titulo, autor, ano, isbn):
+
+def atualizar_livro(conn, livro_id, titulo, autor, ano, isbn, quantidade):
     with conn:
         conn.execute(
-            "UPDATE livro SET titulo = ?, autor = ?, ano = ?, isbn = ? WHERE id = ?",
-            (titulo, autor, ano, isbn, livro_id),
+            "UPDATE livro SET titulo = ?, autor = ?, ano = ?, isbn = ?, quantidade = ? "
+            "WHERE id = ?",
+            (titulo, autor, ano, isbn, quantidade, livro_id),
         )
-
+        
 def buscar_acesso(conn, login):
     return conn.execute(
         "SELECT login, senha_hash, sal FROM acesso WHERE login = ?", (login,)

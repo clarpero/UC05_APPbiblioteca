@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QInputDialog,
+    QSpinBox,
 )
 
 import banco
@@ -148,12 +149,16 @@ class Janela_Livros(QMainWindow):
         self.campo_ano.setPlaceholderText("Ex.: 2016")
         self.campo_isbn = QLineEdit()
         self.campo_isbn.setPlaceholderText('13 dígitos, com ou sem hífen')
+        self.campo_quantidade = QSpinBox()
+        self.campo_quantidade.setRange(1, 999)
+        self.campo_quantidade.setValue(1)
 
         formulario = QFormLayout()
         formulario.addRow("Título *", self.campo_titulo)
         formulario.addRow("Autor *", self.campo_autor)
         formulario.addRow("Ano", self.campo_ano)
         formulario.addRow("ISBN", self.campo_isbn)
+        formulario.addRow("Exemplares *", self.campo_quantidade)
         return formulario
 
     def montar_acoes(self):
@@ -188,8 +193,8 @@ class Janela_Livros(QMainWindow):
         return linha
     
     def montar_tabela(self):
-        self.tabela = QTableWidget(0, 5)
-        self.tabela.setHorizontalHeaderLabels(["ID", "Título", "Autor", "Ano", "ISBN"])
+        self.tabela = QTableWidget(0, 7)
+        self.tabela.setHorizontalHeaderLabels(["ID", "Título", "Autor", "Ano", "ISBN", "Exemplares", "Disponíveis"])
         self.tabela.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.tabela.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tabela.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -222,7 +227,8 @@ class Janela_Livros(QMainWindow):
     def mostrar_na_tabela(self, livros):
         self.tabela.setRowCount(len(livros))
         for linha, livro in enumerate(livros):
-            valores = [livro["id"], livro["titulo"], livro["autor"], livro["ano"], livro["isbn"]]
+            valores = [livro["id"], livro["titulo"], livro["autor"], livro["ano"], livro["isbn"],
+                       livro["quantidade"], livro["disponiveis"]]
             for coluna, valor in enumerate(valores):
                 texto = "" if valor is None else str(valor)
                 self.tabela.setItem(linha, coluna, QTableWidgetItem(texto))
@@ -235,6 +241,7 @@ class Janela_Livros(QMainWindow):
             "autor": self.campo_autor,
             "ano": self.campo_ano,
             "isbn": self.campo_isbn,
+            "quantidade": self.campo_quantidade,
         }
         campos[nome_campo].setFocus()
 
@@ -245,6 +252,7 @@ class Janela_Livros(QMainWindow):
                 self.campo_autor.text(),
                 self.campo_ano.text(),
                 self.campo_isbn.text(),
+                self.campo_quantidade.value(),
             )
         except ErroValidacao as erro:
             self.avisar(str(erro), erro.campo)
@@ -255,7 +263,8 @@ class Janela_Livros(QMainWindow):
             return
 
         novo_id = banco.inserir_livro(
-            self.conn, livro["titulo"], livro["autor"], livro["ano"], livro["isbn"]
+            self.conn, livro["titulo"], livro["autor"], livro["ano"], livro["isbn"],
+            livro["quantidade"],
         )
         self.limpar_campos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
@@ -266,6 +275,7 @@ class Janela_Livros(QMainWindow):
     def limpar_campos(self):
         for campo in (self.campo_titulo, self.campo_autor, self.campo_ano, self.campo_isbn):
             campo.clear()
+        self.campo_quantidade.setValue(1)
         self.tabela.clearSelection()
         self.campo_titulo.setFocus()
 
@@ -312,6 +322,7 @@ class Janela_Livros(QMainWindow):
         self.campo_autor.setText(livro["autor"])
         self.campo_ano.setText("" if livro["ano"] is None else str(livro["ano"]))
         self.campo_isbn.setText(livro["isbn"] or "")
+        self.campo_quantidade.setValue(livro["quantidade"])
         self.botao_cadastrar.setEnabled(False)
         self.botao_atualizar.setEnabled(True)
         self.botao_excluir.setEnabled(True)
@@ -392,15 +403,25 @@ class Janela_Livros(QMainWindow):
                 self.campo_autor.text(),
                 self.campo_ano.text(),
                 self.campo_isbn.text(),
+                self.campo_quantidade.value(),
             )
         except ErroValidacao as erro:
             self.avisar(str(erro), erro.campo)
             return
 
-        antes = (livro["titulo"], livro["autor"], livro["ano"], livro["isbn"])
-        depois = (novo["titulo"], novo["autor"], novo["ano"], novo["isbn"])
+        antes = (livro["titulo"], livro["autor"], livro["ano"], livro["isbn"], livro["quantidade"])
+        depois = (novo["titulo"], novo["autor"], novo["ano"], novo["isbn"], novo["quantidade"])
         if antes == depois:
             self.statusBar().showMessage("Nada mudou. Altere algum campo antes de atualizar.", 5000)
+            return
+
+        ocupados = livro["quantidade"] - livro["disponiveis"]  # em uso ou reservados
+        if novo["quantidade"] < ocupados:
+            self.avisar(
+                f"Há {ocupados} exemplar(es) em uso ou reservado(s). "
+                "A quantidade não pode ficar abaixo disso.",
+                "quantidade",
+            )
             return
 
         funcionario = self.pedir_funcionario(f'Salvar as alterações no livro ID {livro["id"]}.')
@@ -408,7 +429,8 @@ class Janela_Livros(QMainWindow):
             return
 
         banco.atualizar_livro(
-            self.conn, livro["id"], novo["titulo"], novo["autor"], novo["ano"], novo["isbn"]
+            self.conn, livro["id"], novo["titulo"], novo["autor"], novo["ano"], novo["isbn"],
+            novo["quantidade"],
         )
         self.limpar_campos()
         self.campo_pesquisa.clear()
