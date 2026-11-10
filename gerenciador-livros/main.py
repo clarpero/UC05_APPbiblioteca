@@ -1,11 +1,12 @@
 import sys
 
 from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog
 
 import tema
 from abertura import AberturaLivro
 from janela_principal import Janela_Livros
+from login import DialogoLogin
 
 
 def main():
@@ -18,6 +19,11 @@ def main():
         app.installTranslator(tradutor)
 
     tema.aplicar_tema(tema.tema_salvo())
+    
+    login = DialogoLogin()
+    if login.exec() != QDialog.DialogCode.Accepted:
+        return 0  # cancelou ou errou demais: o programa não abre
+    
     janela_principal = Janela_Livros()
 
     abertura = AberturaLivro(tema.TEMAS[tema.tema_salvo()])

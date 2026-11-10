@@ -75,3 +75,8 @@ def atualizar_livro(conn, livro_id, titulo, autor, ano, isbn):
             "UPDATE livro SET titulo = ?, autor = ?, ano = ?, isbn = ? WHERE id = ?",
             (titulo, autor, ano, isbn, livro_id),
         )
+
+def buscar_acesso(conn, login):
+    return conn.execute(
+        "SELECT login, senha_hash, sal FROM acesso WHERE login = ?", (login,)
+    ).fetchone()
