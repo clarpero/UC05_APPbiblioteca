@@ -1,3 +1,4 @@
+import sqlite3
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QIntValidator
 from PySide6.QtWidgets import (
@@ -351,7 +352,14 @@ class Janela_Livros(QMainWindow):
             self.statusBar().showMessage("Exclusão cancelada.", 3000)
             return
 
-        banco.excluir_livro(self.conn, livro["id"])
+        try:
+            banco.excluir_livro(self.conn, livro["id"])
+        except sqlite3.IntegrityError:
+            QMessageBox.warning(
+                self, "Excluir livro",
+                "Este livro tem reservas ou usos registrados e não pode ser excluído.",
+            )
+            return
         self.limpar_campos()
         self.campo_pesquisa.clear()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))

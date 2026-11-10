@@ -1,5 +1,6 @@
 """Regras de validação do livro. Funções puras: não dependem da tela nem do banco."""
 
+import unicodedata
 
 class ErroValidacao(Exception):
     """Dado digitado que não segue as regras. Guarda qual campo tem o problema."""
@@ -29,3 +30,15 @@ def validar_livro(titulo, autor, ano, isbn):
         "ano": int(ano) if ano else None,
         "isbn": isbn,
     }
+PARTICULAS = {"de", "da", "do", "das", "dos", "e"}  # não entram no código
+
+
+def gerar_codigo_funcionario(nome, cpf):
+    """Iniciais de cada nome + 2 últimos dígitos do CPF: Claudio de Araujo Pereira Rodrigues -> CAPR30."""
+    sem_acento = unicodedata.normalize("NFKD", nome)
+    sem_acento = "".join(letra for letra in sem_acento if not unicodedata.combining(letra))
+    iniciais = "".join(
+        parte[0] for parte in sem_acento.split() if parte.lower() not in PARTICULAS
+    )
+    digitos = "".join(c for c in cpf if c.isdigit())
+    return iniciais.upper() + digitos[-2:]
