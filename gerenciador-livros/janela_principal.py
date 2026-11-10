@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QToolButton,
     QVBoxLayout,
     QWidget,
+    QInputDialog,
 )
 
 import banco
@@ -249,12 +250,18 @@ class Janela_Livros(QMainWindow):
             self.avisar(str(erro), erro.campo)
             return
 
+        funcionario = self.pedir_funcionario(f'Cadastrar o livro "{livro["titulo"]}".')
+        if funcionario is None:
+            return
+
         novo_id = banco.inserir_livro(
             self.conn, livro["titulo"], livro["autor"], livro["ano"], livro["isbn"]
         )
         self.limpar_campos()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
-        self.statusBar().showMessage(f'Livro "{livro["titulo"]}" cadastrado com o ID {novo_id}.', 5000)
+        self.statusBar().showMessage(
+            f'Livro "{livro["titulo"]}" cadastrado com o ID {novo_id} por {funcionario["codigo"]}.', 5000
+        )
 
     def limpar_campos(self):
         for campo in (self.campo_titulo, self.campo_autor, self.campo_ano, self.campo_isbn):
@@ -351,16 +358,11 @@ class Janela_Livros(QMainWindow):
             self.statusBar().showMessage("Selecione um livro na tabela para excluir.", 5000)
             return
 
-        resposta = QMessageBox.question(
-            self,
-            "Excluir livro",
-            f'Excluir o livro "{livro["titulo"]}" (ID {livro["id"]})?\n'
-            "Essa ação não pode ser desfeita.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+        funcionario = self.pedir_funcionario(
+            f'Excluir o livro "{livro["titulo"]}" (ID {livro["id"]}).\n'
+            "Essa ação não pode ser desfeita."
         )
-        if resposta != QMessageBox.StandardButton.Yes:
-            self.statusBar().showMessage("Exclusão cancelada.", 3000)
+        if funcionario is None:
             return
 
         try:
@@ -374,7 +376,9 @@ class Janela_Livros(QMainWindow):
         self.limpar_campos()
         self.campo_pesquisa.clear()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
-        self.statusBar().showMessage(f'Livro "{livro["titulo"]}" excluído.', 5000)
+        self.statusBar().showMessage(
+            f'Livro "{livro["titulo"]}" excluído por {funcionario["codigo"]}.', 5000
+        )
 
     def atualizar(self):
         livro = self.livro_selecionado
@@ -399,14 +403,8 @@ class Janela_Livros(QMainWindow):
             self.statusBar().showMessage("Nada mudou. Altere algum campo antes de atualizar.", 5000)
             return
 
-        resposta = QMessageBox.question(
-            self,
-            "Atualizar livro",
-            f'Salvar as alterações no livro ID {livro["id"]}?',
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if resposta != QMessageBox.StandardButton.Yes:
-            self.statusBar().showMessage("Atualização cancelada.", 3000)
+        funcionario = self.pedir_funcionario(f'Salvar as alterações no livro ID {livro["id"]}.')
+        if funcionario is None:
             return
 
         banco.atualizar_livro(
@@ -415,7 +413,9 @@ class Janela_Livros(QMainWindow):
         self.limpar_campos()
         self.campo_pesquisa.clear()
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
-        self.statusBar().showMessage(f'Livro ID {livro["id"]} atualizado.', 5000)
+        self.statusBar().showMessage(
+            f'Livro ID {livro["id"]} atualizado por {funcionario["codigo"]}.', 5000
+        )
 
     def aplicar_icones(self):
         cores = tema.cores_atuais()
@@ -444,3 +444,20 @@ class Janela_Livros(QMainWindow):
 
     def abrir_pessoas(self, tipo):
         DialogoPessoas(self.conn, tipo, self).exec()
+
+    def pedir_funcionario(self, acao):
+        """Pede o código do funcionário. Devolve o funcionário, ou None se cancelar ou errar."""
+        codigo, confirmou = QInputDialog.getText(
+            self, "Código do funcionário", f"{acao}\n\nInforme seu código de funcionário:"
+        )
+        if not confirmou:
+            self.statusBar().showMessage("Operação cancelada.", 3000)
+            return None
+        funcionario = banco.buscar_funcionario_por_codigo(self.conn, codigo)
+        if funcionario is None or not funcionario["ativo"]:
+            QMessageBox.warning(
+                self, "Código do funcionário",
+                "Código inválido ou funcionário inativo. Nada foi alterado.",
+            )
+            return None
+        return funcionario

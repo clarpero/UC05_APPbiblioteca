@@ -155,3 +155,9 @@ def definir_ativo(conn, tabela, pessoa_id, ativo):
         conn.execute(
             f"UPDATE {_tabela(tabela)} SET ativo = ? WHERE id = ?", (int(ativo), pessoa_id)
         )
+
+def buscar_funcionario_por_codigo(conn, codigo):
+    return conn.execute(
+        "SELECT id, codigo, nome, ativo FROM funcionario WHERE codigo = ?",
+        (codigo.strip().upper(),),
+    ).fetchone()
