@@ -26,6 +26,7 @@ import icones
 import tema
 from abertura import AberturaLivro
 from livro import CapaLivro, FundoLivro
+from pessoas import DialogoPessoas
 from validacao import ErroValidacao, validar_livro
 
 
@@ -93,9 +94,19 @@ class Janela_Livros(QMainWindow):
         botao_fechar.setToolTip("Fechar")
         botao_fechar.clicked.connect(self.close)
 
+        botao_usuarios = QToolButton()
+        botao_usuarios.setText("&Usuários")
+        botao_usuarios.clicked.connect(lambda: self.abrir_pessoas("usuario"))
+
+        botao_funcionarios = QToolButton()
+        botao_funcionarios.setText("&Funcionários")
+        botao_funcionarios.clicked.connect(lambda: self.abrir_pessoas("funcionario"))
+
         barra = QHBoxLayout()
         barra.addWidget(titulo)
         barra.addStretch()
+        barra.addWidget(botao_usuarios)
+        barra.addWidget(botao_funcionarios)
         barra.addWidget(self.montar_menu())
         barra.addWidget(botao_minimizar)
         barra.addWidget(botao_fechar)
@@ -430,3 +441,6 @@ class Janela_Livros(QMainWindow):
         citacao.setWordWrap(True)
         citacao.setAlignment(Qt.AlignmentFlag.AlignRight)
         return citacao
+
+    def abrir_pessoas(self, tipo):
+        DialogoPessoas(self.conn, tipo, self).exec()
