@@ -31,6 +31,7 @@ from abertura import AberturaLivro
 from livro import CapaLivro, FundoLivro
 from pessoas import DialogoPessoas
 from reservas import DialogoReservas
+from usos import DialogoUsos
 from validacao import ErroValidacao, validar_livro
 
 
@@ -111,12 +112,17 @@ class Janela_Livros(QMainWindow):
         botao_reservas.setText("&Reservas")
         botao_reservas.clicked.connect(self.abrir_reservas)
 
+        botao_usos = QToolButton()
+        botao_usos.setText("&Em uso")
+        botao_usos.clicked.connect(self.abrir_usos)
+
         barra = QHBoxLayout()
         barra.addWidget(titulo)
         barra.addStretch()
         barra.addWidget(botao_usuarios)
         barra.addWidget(botao_funcionarios)
         barra.addWidget(botao_reservas)
+        barra.addWidget(botao_usos)
         barra.addWidget(self.montar_menu())
         barra.addWidget(botao_minimizar)
         barra.addWidget(botao_fechar)
@@ -478,6 +484,10 @@ class Janela_Livros(QMainWindow):
     def abrir_reservas(self):
         DialogoReservas(self.conn, self).exec()
         self.mostrar_todos()  # os disponíveis podem ter mudado
+
+    def abrir_usos(self):
+        DialogoUsos(self.conn, self).exec()
+        self.mostrar_todos()
 
     def pedir_funcionario(self, acao):
         """Pede o código do funcionário. Devolve o funcionário, ou None se cancelar ou errar."""

@@ -244,3 +244,50 @@ def obter_reserva(conn, reserva_id):
 def mudar_situacao_reserva(conn, reserva_id, situacao):
     with conn:
         conn.execute("UPDATE reserva SET situacao = ? WHERE id = ?", (situacao, reserva_id))
+
+
+# ---------- livros em uso ----------
+
+def livros_da_reserva(conn, reserva_id):
+    linhas = conn.execute(
+        "SELECT livro_id FROM livro_reservado WHERE reserva_id = ?", (reserva_id,)
+    ).fetchall()
+    return [linha["livro_id"] for linha in linhas]
+
+
+def concluir_reserva(conn, reserva_id):
+    """Sem commit: faz parte da transação da retirada."""
+    conn.execute("UPDATE reserva SET situacao = 'concluida' WHERE id = ?", (reserva_id,))
+
+
+def inserir_uso(conn, usuario_id, livro_id, funcionario_id, tipo, inicio, devolver_ate,
+                reserva_id=None):
+    """Sem commit: quem chama controla a transação."""
+    return conn.execute(
+        "INSERT INTO livro_em_uso "
+        "(usuario_id, livro_id, funcionario_id, reserva_id, tipo, inicio, devolver_ate) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (usuario_id, livro_id, funcionario_id, reserva_id, tipo, inicio, devolver_ate),
+    ).lastrowid
+
+
+def listar_usos(conn, so_abertos=True):
+    filtro = "WHERE e.fim IS NULL " if so_abertos else ""
+    return conn.execute(
+        "SELECT e.id, u.nome AS usuario, l.titulo AS livro, e.tipo, "
+        "       e.inicio, e.devolver_ate, e.fim "
+        "  FROM livro_em_uso e "
+        "  JOIN usuario u ON u.id = e.usuario_id "
+        "  JOIN livro l   ON l.id = e.livro_id "
+        + filtro +
+        "ORDER BY e.fim IS NOT NULL, e.inicio DESC"
+    ).fetchall()
+
+
+def obter_uso(conn, uso_id):
+    return conn.execute("SELECT * FROM livro_em_uso WHERE id = ?", (uso_id,)).fetchone()
+
+
+def encerrar_uso(conn, uso_id, fim):
+    with conn:
+        conn.execute("UPDATE livro_em_uso SET fim = ? WHERE id = ?", (fim, uso_id))

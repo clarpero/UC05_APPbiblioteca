@@ -96,6 +96,8 @@ class DialogoReservas(QDialog):
         cabecalho.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         cabecalho.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
+        self.botao_retirar = QPushButton("Retirar reserva selecionada")
+        self.botao_retirar.setProperty("variante", "primario")
         self.botao_cancelar = QPushButton("Cancelar reserva selecionada")
 
         titulo = QLabel("Reservas")
@@ -104,6 +106,7 @@ class DialogoReservas(QDialog):
         coluna.addWidget(titulo)
         coluna.addWidget(self.combo_filtro)
         coluna.addWidget(self.tabela)
+        coluna.addWidget(self.botao_retirar)
         coluna.addWidget(self.botao_cancelar)
         return coluna
 
@@ -112,6 +115,7 @@ class DialogoReservas(QDialog):
         self.campo_livro.textChanged.connect(self.filtrar_livros)
         self.botao_reservar.clicked.connect(self.reservar)
         self.combo_filtro.currentIndexChanged.connect(self.atualizar_lista)
+        self.botao_retirar.clicked.connect(self.retirar)
         self.botao_cancelar.clicked.connect(self.cancelar)
 
     # ---------- formulário ----------
@@ -199,12 +203,34 @@ class DialogoReservas(QDialog):
                 self.tabela.setItem(linha, coluna, QTableWidgetItem(str(valor)))
         self.tabela.clearSelection()
 
-    def cancelar(self):
+    def reserva_selecionada(self):
+        """Devolve o número da reserva marcada na tabela, ou None."""
         linhas = self.tabela.selectionModel().selectedRows()
         if not linhas:
             QMessageBox.information(self, "Reservas", "Selecione uma reserva na lista.")
+            return None
+        return int(self.tabela.item(linhas[0].row(), 0).text())
+
+    def retirar(self):
+        reserva_id = self.reserva_selecionada()
+        if reserva_id is None:
             return
-        reserva_id = int(self.tabela.item(linhas[0].row(), 0).text())
+        try:
+            prazo = servicos.retirar_reserva(self.conn, self.campo_codigo.text(), reserva_id)
+        except ErroValidacao as erro:
+            self.avisar(erro)
+            return
+        QMessageBox.information(
+            self, "Reservas",
+            f"Reserva nº {reserva_id} retirada.\nDevolver até {prazo.strftime('%d/%m/%Y')}.",
+        )
+        self.carregar_livros()
+        self.atualizar_lista()
+
+    def cancelar(self):
+        reserva_id = self.reserva_selecionada()
+        if reserva_id is None:
+            return
         try:
             servicos.cancelar_reserva(self.conn, self.campo_codigo.text(), reserva_id)
         except ErroValidacao as erro:
