@@ -167,3 +167,80 @@ def buscar_funcionario_por_codigo(conn, codigo):
         "SELECT id, codigo, nome, ativo FROM funcionario WHERE codigo = ?",
         (codigo.strip().upper(),),
     ).fetchone()
+
+# ---------- reservas ----------
+
+def expirar_reservas(conn, momento):
+    """Reservas ativas com prazo vencido viram 'expirada' e liberam os exemplares."""
+    with conn:
+        conn.execute(
+            "UPDATE reserva SET situacao = 'expirada' "
+            "WHERE situacao = 'ativa' AND retirar_ate < ?",
+            (momento,),
+        )
+
+
+def livros_ocupados_do_usuario(conn, usuario_id):
+    """Quantos livros o usuário tem agora: em uso + em reservas ativas."""
+    return conn.execute(
+        """
+        SELECT (SELECT COUNT(*) FROM livro_em_uso
+                 WHERE usuario_id = :usuario AND fim IS NULL)
+             + (SELECT COUNT(*) FROM livro_reservado lr
+                  JOIN reserva r ON r.id = lr.reserva_id
+                 WHERE r.usuario_id = :usuario AND r.situacao = 'ativa')
+        """,
+        {"usuario": usuario_id},
+    ).fetchone()[0]
+
+
+def usuario_ja_tem_livro(conn, usuario_id, livro_id):
+    """True se o livro já está com o usuário ou numa reserva ativa dele."""
+    return conn.execute(
+        """
+        SELECT EXISTS (SELECT 1 FROM livro_em_uso
+                        WHERE usuario_id = :usuario AND livro_id = :livro AND fim IS NULL)
+            OR EXISTS (SELECT 1 FROM livro_reservado lr
+                         JOIN reserva r ON r.id = lr.reserva_id
+                        WHERE r.usuario_id = :usuario AND lr.livro_id = :livro
+                          AND r.situacao = 'ativa')
+        """,
+        {"usuario": usuario_id, "livro": livro_id},
+    ).fetchone()[0] == 1
+
+
+def inserir_reserva(conn, usuario_id, funcionario_id, criada_em, retirar_ate, livros_ids):
+    """Grava a reserva e os livros dela. Sem commit: quem chama controla a transação."""
+    reserva_id = conn.execute(
+        "INSERT INTO reserva (usuario_id, funcionario_id, criada_em, retirar_ate) "
+        "VALUES (?, ?, ?, ?)",
+        (usuario_id, funcionario_id, criada_em, retirar_ate),
+    ).lastrowid
+    conn.executemany(
+        "INSERT INTO livro_reservado (reserva_id, livro_id) VALUES (?, ?)",
+        [(reserva_id, livro_id) for livro_id in livros_ids],
+    )
+    return reserva_id
+
+
+def listar_reservas(conn, so_ativas=True):
+    filtro = "WHERE r.situacao = 'ativa' " if so_ativas else ""
+    return conn.execute(
+        "SELECT r.id, u.nome AS usuario, r.retirar_ate, r.situacao, "
+        "       GROUP_CONCAT(l.titulo, '; ') AS livros "
+        "  FROM reserva r "
+        "  JOIN usuario u          ON u.id = r.usuario_id "
+        "  JOIN livro_reservado lr ON lr.reserva_id = r.id "
+        "  JOIN livro l            ON l.id = lr.livro_id "
+        + filtro +
+        "GROUP BY r.id ORDER BY r.retirar_ate"
+    ).fetchall()
+
+
+def obter_reserva(conn, reserva_id):
+    return conn.execute("SELECT * FROM reserva WHERE id = ?", (reserva_id,)).fetchone()
+
+
+def mudar_situacao_reserva(conn, reserva_id, situacao):
+    with conn:
+        conn.execute("UPDATE reserva SET situacao = ? WHERE id = ?", (situacao, reserva_id))

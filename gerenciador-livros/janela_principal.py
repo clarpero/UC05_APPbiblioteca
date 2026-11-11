@@ -26,9 +26,11 @@ from PySide6.QtWidgets import (
 import banco
 import icones
 import tema
+import servicos
 from abertura import AberturaLivro
 from livro import CapaLivro, FundoLivro
 from pessoas import DialogoPessoas
+from reservas import DialogoReservas
 from validacao import ErroValidacao, validar_livro
 
 
@@ -70,6 +72,7 @@ class Janela_Livros(QMainWindow):
 
         self.conectar_eventos()
         self.aplicar_icones()
+        servicos.expirar_reservas(self.conn)
         self.mostrar_na_tabela(banco.listar_livros(self.conn))
 
     def statusBar(self):
@@ -104,11 +107,16 @@ class Janela_Livros(QMainWindow):
         botao_funcionarios.setText("&Funcionários")
         botao_funcionarios.clicked.connect(lambda: self.abrir_pessoas("funcionario"))
 
+        botao_reservas = QToolButton()
+        botao_reservas.setText("&Reservas")
+        botao_reservas.clicked.connect(self.abrir_reservas)
+
         barra = QHBoxLayout()
         barra.addWidget(titulo)
         barra.addStretch()
         barra.addWidget(botao_usuarios)
         barra.addWidget(botao_funcionarios)
+        barra.addWidget(botao_reservas)
         barra.addWidget(self.montar_menu())
         barra.addWidget(botao_minimizar)
         barra.addWidget(botao_fechar)
@@ -466,6 +474,10 @@ class Janela_Livros(QMainWindow):
 
     def abrir_pessoas(self, tipo):
         DialogoPessoas(self.conn, tipo, self).exec()
+
+    def abrir_reservas(self):
+        DialogoReservas(self.conn, self).exec()
+        self.mostrar_todos()  # os disponíveis podem ter mudado
 
     def pedir_funcionario(self, acao):
         """Pede o código do funcionário. Devolve o funcionário, ou None se cancelar ou errar."""
