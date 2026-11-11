@@ -1,6 +1,7 @@
 """Tela de livros em uso: entregar (ler no local ou retirar) e devolver."""
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
 
 import banco
 import servicos
+import tema
 from reservas import data_hora
 from validacao import ErroValidacao, mascarar_cpf
 
@@ -202,11 +204,22 @@ class DialogoUsos(QDialog):
         self.tabela.setRowCount(len(usos))
         for linha, uso in enumerate(usos):
             prazo = data_hora(uso["devolver_ate"]) if uso["devolver_ate"] else "—"
+            situacao = servicos.situacao_do_uso(uso)
             valores = [uso["id"], uso["usuario"], uso["livro"], NOMES_TIPO[uso["tipo"]],
-                       prazo, servicos.situacao_do_uso(uso)]
+                       prazo, situacao]
             for coluna, valor in enumerate(valores):
-                self.tabela.setItem(linha, coluna, QTableWidgetItem(str(valor)))
+                item = QTableWidgetItem(str(valor))
+                if situacao == "atrasado":
+                    self.destacar(item)
+                self.tabela.setItem(linha, coluna, item)
         self.tabela.clearSelection()
+
+    def destacar(self, item):
+        """Livro atrasado: linha em negrito, na cor de alerta do tema."""
+        item.setForeground(QColor(tema.cores_atuais()["alerta"]))
+        fonte = item.font()
+        fonte.setBold(True)
+        item.setFont(fonte)
 
     def devolver(self):
         linhas = self.tabela.selectionModel().selectedRows()
