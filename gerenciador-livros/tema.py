@@ -107,6 +107,9 @@ QToolButton {
 QToolButton:hover {
     background-color: rgba(255, 255, 255, 40);
 }
+QToolButton:checked {
+    background-color: rgba(255, 255, 255, 70);
+}
 QToolButton#fechar:hover {
     background-color: #c42b1c;
     color: #ffffff;

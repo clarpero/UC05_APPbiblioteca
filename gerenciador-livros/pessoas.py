@@ -3,7 +3,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QDialog,
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
@@ -14,6 +13,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QWidget,
 )
 
 import banco
@@ -40,20 +40,26 @@ TIPOS = {
 }
 
 
-class DialogoPessoas(QDialog):
+class PaginasPessoas(QWidget):
+    """Este widget é a página esquerda (cadastro); pagina_direita é a lista."""
+
     def __init__(self, conn, tipo, parent=None):
         super().__init__(parent)
         self.conn = conn
         self.tipo = tipo
         self.config = TIPOS[tipo]
         self.selecionado = None  # pessoa clicada na tabela (ou None)
-        self.setWindowTitle(self.config["titulo"])
-        self.resize(860, 540)
 
-        layout = QHBoxLayout(self)
-        layout.addLayout(self.montar_formulario(), 1)
-        layout.addLayout(self.montar_lista(), 2)
+        self.setLayout(self.montar_formulario())
+        self.pagina_direita = QWidget()
+        self.pagina_direita.setLayout(self.montar_lista())
+        for layout in (self.layout(), self.pagina_direita.layout()):
+            layout.setContentsMargins(0, 0, 0, 0)  # a margem já é a da página do livro
         self.conectar_eventos()
+        self.atualizar_lista()
+
+    def ao_mostrar(self):
+        """Chamado quando o livro vira para esta tela."""
         self.atualizar_lista()
 
     # ---------- montagem ----------
@@ -124,7 +130,10 @@ class DialogoPessoas(QDialog):
         cabecalho.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         cabecalho.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
 
+        titulo = QLabel(self.config["titulo"])
+        titulo.setObjectName("titulo_pagina")
         coluna = QVBoxLayout()
+        coluna.addWidget(titulo)
         coluna.addWidget(self.campo_pesquisa)
         coluna.addWidget(self.tabela)
         return coluna

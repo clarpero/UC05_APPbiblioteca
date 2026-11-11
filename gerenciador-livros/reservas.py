@@ -6,9 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
-    QDialog,
     QFormLayout,
-    QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
@@ -19,6 +17,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
+    QWidget,
 )
 
 import banco
@@ -31,19 +30,24 @@ def data_hora(texto):
     return datetime.fromisoformat(texto).strftime("%d/%m/%Y %H:%M")
 
 
-class DialogoReservas(QDialog):
+class PaginasReservas(QWidget):
+    """Este widget é a página esquerda (formulário); pagina_direita é a lista."""
+
     def __init__(self, conn, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.setWindowTitle("Reservas")
-        self.resize(1000, 580)
 
-        layout = QHBoxLayout(self)
-        layout.addLayout(self.montar_formulario(), 1)
-        layout.addLayout(self.montar_lista(), 1)
+        self.setLayout(self.montar_formulario())
+        self.pagina_direita = QWidget()
+        self.pagina_direita.setLayout(self.montar_lista())
+        for layout in (self.layout(), self.pagina_direita.layout()):
+            layout.setContentsMargins(0, 0, 0, 0)  # a margem já é a da página do livro
         self.conectar_eventos()
+        self.ao_mostrar()
 
-        servicos.expirar_reservas(conn)
+    def ao_mostrar(self):
+        """Chamado quando o livro vira para esta tela."""
+        servicos.expirar_reservas(self.conn)
         self.carregar_livros()
         self.atualizar_lista()
 

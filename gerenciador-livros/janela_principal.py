@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup, QIntValidator
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QButtonGroup,
     QFormLayout,
     QFrame,
     QHBoxLayout,
@@ -21,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QInputDialog,
     QSpinBox,
+    QStackedWidget,
 )
 
 import banco
@@ -29,46 +31,51 @@ import tema
 import servicos
 from abertura import AberturaLivro
 from livro import CapaLivro, FundoLivro
-from pessoas import DialogoPessoas
-from reservas import DialogoReservas
-from usos import DialogoUsos
+from pessoas import PaginasPessoas
+from reservas import PaginasReservas
+from usos import PaginasUsos
 from validacao import ErroValidacao, validar_livro
+from virada import ViradaPagina
 
 
 class Janela_Livros(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gerenciador de Livros")
-        self.resize(1050, 670)
+        self.resize(1100, 670)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)          # sem a moldura do Windows
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)  # cantos transparentes
         self.conn = banco.conectar()
         self.livro_selecionado = None  # livro clicado na tabela (ou None)
         self.pode_fechar = False       # vira True depois da animação de fechar
 
-        capa = CapaLivro()
+        capa = self.capa = CapaLivro()
         layout_capa = QVBoxLayout(capa)
         layout_capa.setContentsMargins(18, 12, 18, 8)
         self.barra_mensagens = QStatusBar()
 
-        pagina_esquerda = self.montar_coluna_cadastro()
-        lombada = self.montar_lombada()
-        pagina_direita = self.montar_coluna_livros()
-        capa.paginas = [(pagina_esquerda, "esquerda"), (pagina_direita, "direita")]
+        # Cada página do livro guarda uma pilha de conteúdos: um por tela.
+        self.pilha_esquerda = QStackedWidget()
+        self.pilha_direita = QStackedWidget()
+        self.pagina_esquerda = self.montar_pagina("pagina_esquerda", self.pilha_esquerda)
+        self.lombada = self.montar_lombada()
+        self.pagina_direita = self.montar_pagina("pagina_direita", self.pilha_direita)
+        capa.paginas = [(self.pagina_esquerda, "esquerda"), (self.pagina_direita, "direita")]
+        self.montar_telas()
+        self.virada = ViradaPagina(capa)
 
         paginas = QHBoxLayout()
         paginas.setSpacing(0)
-        paginas.addWidget(pagina_esquerda, 1)
-        paginas.addWidget(lombada)
-        paginas.addWidget(pagina_direita, 2)
+        paginas.addWidget(self.pagina_esquerda, 2)
+        paginas.addWidget(self.lombada)
+        paginas.addWidget(self.pagina_direita, 3)
 
         layout_capa.addLayout(self.montar_barra_titulo())
         layout_capa.addLayout(paginas)
         layout_capa.addSpacing(8)  # espaço para a pilha de folhas aparecer
         layout_capa.addWidget(self.barra_mensagens)
-        self.setCentralWidget(FundoLivro(capa, lombada))
+        self.setCentralWidget(FundoLivro(capa, self.lombada))
 
-        self.botao_cadastrar.setProperty("variante", "primario")
         self.statusBar().showMessage("Pronto. Cadastre o primeiro livro.")
 
         self.conectar_eventos()
@@ -100,29 +107,18 @@ class Janela_Livros(QMainWindow):
         botao_fechar.setToolTip("Fechar")
         botao_fechar.clicked.connect(self.close)
 
-        botao_usuarios = QToolButton()
-        botao_usuarios.setText("&Usuários")
-        botao_usuarios.clicked.connect(lambda: self.abrir_pessoas("usuario"))
-
-        botao_funcionarios = QToolButton()
-        botao_funcionarios.setText("&Funcionários")
-        botao_funcionarios.clicked.connect(lambda: self.abrir_pessoas("funcionario"))
-
-        botao_reservas = QToolButton()
-        botao_reservas.setText("&Reservas")
-        botao_reservas.clicked.connect(self.abrir_reservas)
-
-        botao_usos = QToolButton()
-        botao_usos.setText("&Em uso")
-        botao_usos.clicked.connect(self.abrir_usos)
-
         barra = QHBoxLayout()
         barra.addWidget(titulo)
         barra.addStretch()
-        barra.addWidget(botao_usuarios)
-        barra.addWidget(botao_funcionarios)
-        barra.addWidget(botao_reservas)
-        barra.addWidget(botao_usos)
+        self.abas = QButtonGroup(self)  # só uma aba fica marcada por vez
+        for indice, (nome, _, _, _) in enumerate(self.telas):
+            aba = QToolButton()
+            aba.setText(nome)
+            aba.setCheckable(True)
+            aba.setChecked(indice == 0)
+            aba.clicked.connect(lambda _, i=indice: self.trocar_tela(i))
+            self.abas.addButton(aba, indice)
+            barra.addWidget(aba)
         barra.addWidget(self.montar_menu())
         barra.addWidget(botao_minimizar)
         barra.addWidget(botao_fechar)
@@ -177,6 +173,7 @@ class Janela_Livros(QMainWindow):
 
     def montar_acoes(self):
         self.botao_cadastrar = QPushButton("Cadastrar")
+        self.botao_cadastrar.setProperty("variante", "primario")
         self.botao_atualizar = QPushButton("Atualizar")
         self.botao_excluir = QPushButton("Excluir")
         self.botao_limpar = QPushButton("Limpar")
@@ -354,10 +351,7 @@ class Janela_Livros(QMainWindow):
         coluna.addLayout(self.montar_acoes())
         coluna.addStretch()
         coluna.addWidget(self.montar_citacao())
-        pagina = QFrame()
-        pagina.setObjectName("pagina_esquerda")
-        pagina.setLayout(coluna)
-        return pagina
+        return self.montar_conteudo(coluna)
 
     def montar_coluna_livros(self):
         titulo = QLabel("Livros cadastrados")
@@ -366,10 +360,7 @@ class Janela_Livros(QMainWindow):
         coluna.addWidget(titulo)
         coluna.addLayout(self.montar_pesquisa())
         coluna.addWidget(self.montar_tabela())
-        pagina = QFrame()
-        pagina.setObjectName("pagina_direita")
-        pagina.setLayout(coluna)
-        return pagina
+        return self.montar_conteudo(coluna)
 
     def montar_lombada(self):
         lombada = QFrame()
@@ -478,16 +469,58 @@ class Janela_Livros(QMainWindow):
         citacao.setAlignment(Qt.AlignmentFlag.AlignRight)
         return citacao
 
-    def abrir_pessoas(self, tipo):
-        DialogoPessoas(self.conn, tipo, self).exec()
+    # ---------- telas do livro ----------
 
-    def abrir_reservas(self):
-        DialogoReservas(self.conn, self).exec()
-        self.mostrar_todos()  # os disponíveis podem ter mudado
+    def montar_conteudo(self, layout):
+        """Embrulha um layout num widget, para caber na pilha de uma página."""
+        layout.setContentsMargins(0, 0, 0, 0)  # a margem já é a da página
+        conteudo = QWidget()
+        conteudo.setLayout(layout)
+        return conteudo
 
-    def abrir_usos(self):
-        DialogoUsos(self.conn, self).exec()
-        self.mostrar_todos()
+    def montar_pagina(self, nome, pilha):
+        """Uma folha do livro. O conteúdo dela muda conforme a tela escolhida."""
+        pagina = QFrame()
+        pagina.setObjectName(nome)
+        layout = QVBoxLayout(pagina)
+        layout.addWidget(pilha)
+        return pagina
+
+    def montar_telas(self):
+        """Cada tela: (nome da aba, conteúdo esquerdo, conteúdo direito, o que fazer ao mostrar)."""
+        usuarios = PaginasPessoas(self.conn, "usuario")
+        funcionarios = PaginasPessoas(self.conn, "funcionario")
+        reservas = PaginasReservas(self.conn)
+        usos = PaginasUsos(self.conn)
+        self.telas = [
+            ("&Livros", self.montar_coluna_cadastro(), self.montar_coluna_livros(),
+             self.mostrar_todos),
+            ("&Usuários", usuarios, usuarios.pagina_direita, usuarios.ao_mostrar),
+            ("&Funcionários", funcionarios, funcionarios.pagina_direita, funcionarios.ao_mostrar),
+            ("&Reservas", reservas, reservas.pagina_direita, reservas.ao_mostrar),
+            ("&Em uso", usos, usos.pagina_direita, usos.ao_mostrar),
+        ]
+        for _, esquerda, direita, _ in self.telas:
+            self.pilha_esquerda.addWidget(esquerda)
+            self.pilha_direita.addWidget(direita)
+        self.tela_atual = 0
+
+    def trocar_tela(self, indice):
+        """Vira a página até a tela escolhida."""
+        if indice == self.tela_atual:
+            return
+        self.virada.parar()  # se ainda estava virando, termina na hora
+        area = self.pagina_esquerda.geometry().united(self.pagina_direita.geometry())
+        antes = self.capa.grab(area)  # "foto" das páginas como estão
+
+        self.pilha_esquerda.setCurrentIndex(indice)
+        self.pilha_direita.setCurrentIndex(indice)
+        self.telas[indice][3]()  # atualiza os dados da tela que vai aparecer
+        depois = self.capa.grab(area)  # "foto" das páginas novas
+
+        meio = self.lombada.geometry().center().x() - area.x()
+        self.virada.iniciar(area, antes, depois, meio, para_frente=indice > self.tela_atual)
+        self.tela_atual = indice
 
     def pedir_funcionario(self, acao):
         """Pede o código do funcionário. Devolve o funcionário, ou None se cancelar ou errar."""
