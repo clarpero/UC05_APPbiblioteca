@@ -44,7 +44,10 @@ Cada arquivo tem uma única responsabilidade. Assim, uma mudança na tela não q
 | `reservas.py` | Tela de reservas |
 | `usos.py` | Tela de livros em uso |
 | `tema.py` | Temas claro, escuro e biblioteca |
-| `livro.py`, `abertura.py`, `icones.py`, `gerar_textura.py` | Visual de livro: capa, animações, ícones e textura de papel |
+| `livro.py`, `abertura.py`, `virada.py`, `icones.py` | Visual de livro: capa, animações de abrir e de virar a página, ícones |
+| `gerar_textura.py` | Ferramenta: gera a textura de papel (`imagens/papel.png`) |
+| `importar_json.py` | Ferramenta: importa pessoas de um arquivo JSON para o banco |
+| `SEED/` | Dados fictícios de teste (funcionários e usuários) e instruções de importação |
 
 ---
 
@@ -243,6 +246,37 @@ Regras:
 
 ---
 
+## Parte 6 — Evolução
+
+### Etapa 22 — Telas dentro do livro, com virada de página
+
+**O que foi feito:** as telas de Usuários, Funcionários, Reservas e Em uso deixaram de abrir em janelas por cima. Cada uma ocupa as duas páginas do livro, e trocar de aba vira a página até ela. A folha que vira é curva, com frente, verso e sombra.
+
+**Por quê:**
+- **Tudo dentro do livro:** o programa mantém a mesma identidade em todas as telas, sem janelas soltas.
+- **Pilha de conteúdos por página** (`QStackedWidget`): cada página guarda um conteúdo por tela e mostra um de cada vez. A lombada e a fita ficam sempre no mesmo lugar.
+- **Animação com duas "fotos"** (`virada.py`): o programa fotografa as páginas antes e depois da troca e desenha a folha por cima. Assim a animação não depende do conteúdo de cada tela.
+- **Folha em tiras:** a folha é desenhada em 60 tiras verticais, cada uma com a sua inclinação. Perto da lombada ela vem atrasada e a ponta vai na frente; é isso que cria a curva.
+- **Direção:** aba à direita vira para a frente, aba à esquerda vira para trás, como ao folhear.
+
+### Etapa 23 — Dados de teste (SEED)
+
+**O que foi feito:** criada a ferramenta `importar_json.py`, que lê um arquivo JSON de pessoas e grava no banco como usuários ou funcionários. A pasta `SEED/` guarda 5 funcionários e 30 usuários fictícios, com as instruções de uso.
+
+**Por quê:**
+- **Testar com volume:** pesquisa, reservas e limites só são bem testados com várias pessoas cadastradas.
+- **Mesma validação da tela:** o importador usa `validar_pessoa`, então nenhum dado entra no banco fora das regras.
+- **CPF repetido é pulado:** rodar duas vezes não duplica ninguém.
+- **Só os campos do sistema:** do arquivo entram nome, CPF, e-mail, nascimento e endereço; o resto é ignorado.
+
+### Etapa 24 — Máscara do CPF
+
+**O que foi feito:** nas telas, o CPF aparece só com o final visível: `***.***.247-25`.
+
+**Por quê:** o código do funcionário já mostra os 2 últimos dígitos do CPF. A máscara mostra o mesmo trecho final, então o código e a máscara juntos não revelam mais do que cada um sozinho, e 6 dígitos ficam sempre escondidos de quem olha a tela.
+
+---
+
 ## Regras do sistema (resumo)
 
 | Regra | Valor |
@@ -252,8 +286,61 @@ Regras:
 | Livros por usuário ao mesmo tempo | 3 (em uso + reservados) |
 | Quem altera o acervo | Funcionário ativo, pelo código |
 | Pessoas e livros com histórico | São desativados ou preservados, não excluídos |
+| CPF na tela | Só o final visível: `***.***.247-25` |
 
 Os prazos e o limite são constantes no topo do `servicos.py`.
+
+---
+
+## Avaliação da estrutura do projeto
+
+Análise da organização atual: o que está certo e o que pode melhorar.
+
+### O que está certo
+
+A separação por responsabilidade (camadas) é respeitada nos imports:
+
+- `banco.py` só fala SQL e não importa nada de tela;
+- `validacao.py` não depende de banco nem de tela;
+- `servicos.py` usa o banco e a validação, mas não a tela;
+- as telas chamam os serviços e o banco, nunca o contrário.
+
+**Por que importa:** uma mudança na tela não quebra o banco, e uma regra nova não exige mexer na tela.
+
+### O que pode melhorar
+
+**1. Todos os arquivos estão numa pasta só.** Telas, regras, banco, visual e ferramentas ficam misturados. A organização existe no código, mas não aparece nas pastas. Uma divisão possível:
+
+```
+gerenciador-livros/
+├── main.py
+├── requirements.txt
+├── dados/        banco.py, schema.sql, seguranca.py
+├── regras/       validacao.py, servicos.py
+├── telas/        janela_principal.py, login.py, pessoas.py, reservas.py, usos.py
+├── visual/       tema.py, livro.py, abertura.py, virada.py, icones.py, imagens/
+└── ferramentas/  importar_json.py, gerar_textura.py, SEED/
+```
+
+**2. `janela_principal.py` faz coisas demais.** É o maior arquivo do projeto, com mais que o dobro das linhas de qualquer outra tela. Ele monta a moldura do livro (abas, tema, virada de página) e também é a tela de livros (formulário, tabela, cadastrar, excluir). A tela de livros poderia ter o seu próprio arquivo, como já acontece com `pessoas.py` e `reservas.py`.
+
+**3. Código repetido entre `reservas.py` e `usos.py`.** A busca de usuário, a lista de livros com filtro e o aviso de erro são quase iguais nos dois. Se uma regra mudar, é preciso lembrar de mudar nos dois lugares.
+
+**4. Detalhes menores.**
+- A pasta `SEED` está em maiúsculas; o resto do projeto usa minúsculas.
+- As ferramentas de uso único (`importar_json.py`, `gerar_textura.py`) estão junto com o programa.
+- O nome da classe `Janela_Livros` mistura dois estilos; o padrão do Python é `JanelaLivros`.
+
+### Vale a pena mudar?
+
+| Mudança | Ganho | Risco |
+|---|---|---|
+| Detalhes menores (4) | Pequeno, mas visível | Quase nenhum |
+| Separar a tela de livros (2) | Arquivo principal mais simples | Médio |
+| Unificar o código repetido (3) | Manutenção mais fácil | Médio |
+| Criar pastas (1) | Organização visível | Médio a alto: muda todos os imports e os caminhos de `schema.sql`, `livros.db` e `imagens/` |
+
+**Conclusão:** as camadas estão corretas, que é o mais importante numa integração com banco de dados. As melhorias são de organização, não de funcionamento. A ordem mais segura é: detalhes menores, depois separar a tela de livros, e por último as pastas, sempre testando tudo antes de cada commit.
 
 ---
 
