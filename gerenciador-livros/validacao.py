@@ -68,9 +68,13 @@ def cpf_valido(valor):
 
 
 def mascarar_cpf(valor):
-    """Mostra só o miolo do CPF na tela: ***.982.247-**"""
+    """Mostra só o final do CPF na tela: ***.***.247-25
+
+    Os 2 últimos dígitos já aparecem no código do funcionário. Mostrar o miolo
+    junto deixaria só 3 dígitos escondidos, fáceis de descobrir.
+    """
     d = normalizar_cpf(valor)
-    return f"***.{d[3:6]}.{d[6:9]}-**" if len(d) == 11 else "***"
+    return f"***.***.{d[6:9]}-{d[9:]}" if len(d) == 11 else "***"
 
 
 def converter_data(texto):
